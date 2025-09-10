@@ -1,4 +1,4 @@
-# RevManger - Real-Time Restaurant Management PWA
+# RevManager - Real-Time Restaurant Management PWA
 
 A comprehensive Progressive Web Application for restaurant management with **real-time 86'd list synchronization** and automatic inventory-based menu availability management.
 
