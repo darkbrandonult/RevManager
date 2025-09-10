@@ -1,0 +1,80 @@
+services:
+  # PostgreSQL Database for Testing
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: revmanager-postgres-test
+    environment:
+      POSTGRES_DB: revmanager_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./server/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - revmanager-test-network
+
+  # Redis for Testing
+  redis-test:
+    image: redis:7-alpine
+    container_name: revmanager-redis-test
+    ports:
+      - "6381:6379"
+    networks:
+      - revmanager-test-network
+
+  # Frontend Tests
+  frontend-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: frontend-test
+    container_name: revmanager-frontend-test
+    environment:
+      NODE_ENV: test
+      CI: true
+    volumes:
+      - ./src:/app/src:ro
+      - ./jest.config.json:/app/jest.config.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - test-coverage:/app/coverage
+    command: npm test -- --coverage --watchAll=false
+    networks:
+      - revmanager-test-network
+
+  # Backend Tests
+  backend-test:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.test
+    container_name: revmanager-backend-test
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@postgres-test:5432/revmanager_test
+      REDIS_URL: redis://redis-test:6379
+      JWT_SECRET: test-secret-key
+      PORT: 3001
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_started
+    volumes:
+      - ./server:/app:ro
+      - /app/node_modules
+    command: npm test -- --coverage --watchAll=false
+    networks:
+      - revmanager-test-network
+
+volumes:
+  test-coverage:
+    driver: local
+
+networks:
+  revmanager-test-network:
+    driver: bridge

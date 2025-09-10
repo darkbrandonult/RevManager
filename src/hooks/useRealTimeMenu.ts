@@ -1,0 +1,267 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useSocket } from '../contexts/SocketContext'
+
+interface MenuItem {
+  id: number
+  name: string
+  description: string
+  price: number
+  category: string
+  is_available: boolean
+  effective_availability: boolean
+  eighty_six_reason?: string
+  is_auto_generated?: boolean
+  image_url?: string
+}
+
+interface EightySixItem {
+  eighty_six_id: number
+  menu_item_id: number
+  name: string
+  category: string
+  reason: string
+  is_auto_generated: boolean
+  created_at: string
+  created_by_name?: string
+}
+
+interface MenuUpdateEvent {
+  type: 'item-86ed' | 'item-restored' | 'bulk-update'
+  menuItemId?: number
+  menu: MenuItem[]
+  eightySixList: EightySixItem[]
+  timestamp: string
+  summary?: {
+    total: number
+    available: number
+    unavailable: number
+    changed: Array<{
+      id: number
+      name: string
+      previouslyAvailable: boolean
+      nowAvailable: boolean
+    }>
+  }
+}
+
+interface InventoryAlert {
+  type: string
+  menuItem?: MenuItem
+  reason?: string
+  timestamp: string
+}
+
+export const useRealTimeMenu = () => {
+  const [menu, setMenu] = useState<MenuItem[]>([])
+  const [eightySixList, setEightySixList] = useState<EightySixItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null)
+  const [recentChanges, setRecentChanges] = useState<MenuUpdateEvent[]>([])
+  const { socket } = useSocket()
+
+  // Fetch initial menu data
+  const fetchMenu = useCallback(async () => {
+    try {
+      setLoading(true)
+      const [menuResponse, eightySixResponse] = await Promise.all([
+        fetch('/api/menu'),
+        fetch('/api/menu/86-list', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+      ])
+
+      if (menuResponse.ok) {
+        const menuData = await menuResponse.json()
+        setMenu(menuData)
+      }
+
+      if (eightySixResponse.ok) {
+        const eightySixData = await eightySixResponse.json()
+        setEightySixList(eightySixData)
+      }
+
+      setLastUpdate(new Date().toISOString())
+    } catch (error) {
+      console.error('Error fetching menu:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Handle real-time menu updates
+  useEffect(() => {
+    if (!socket) return
+
+    const handleMenuUpdate = (updateEvent: MenuUpdateEvent) => {
+      console.log('📋 REAL-TIME MENU UPDATE:', updateEvent.type, updateEvent)
+
+      // Update menu state
+      setMenu(updateEvent.menu)
+      setEightySixList(updateEvent.eightySixList)
+      setLastUpdate(updateEvent.timestamp)
+
+      // Track recent changes (keep last 10)
+      setRecentChanges((prev: MenuUpdateEvent[]) => [updateEvent, ...prev.slice(0, 9)])
+
+      // Show notification based on update type
+      if (updateEvent.type === 'item-86ed') {
+        const item = updateEvent.menu.find((m: MenuItem) => m.id === updateEvent.menuItemId)
+        if (item) {
+          console.log(`🚫 MENU ALERT: ${item.name} is now unavailable`)
+          // In a real app, you might show a toast notification here
+        }
+      } else if (updateEvent.type === 'item-restored') {
+        const item = updateEvent.menu.find((m: MenuItem) => m.id === updateEvent.menuItemId)
+        if (item) {
+          console.log(`✅ MENU ALERT: ${item.name} is now available`)
+        }
+      } else if (updateEvent.type === 'bulk-update' && updateEvent.summary) {
+        console.log(`📊 BULK UPDATE: ${updateEvent.summary.changed.length} items changed`)
+      }
+    }
+
+    const handleInventoryAlert = (alertData: InventoryAlert) => {
+      console.log('📦 INVENTORY ALERT:', alertData)
+      // Handle inventory-specific alerts
+    }
+
+    // Listen for real-time events
+    socket.on('menu-update', handleMenuUpdate)
+    socket.on('menu-bulk-update', handleMenuUpdate)
+    socket.on('inventory-alert', handleInventoryAlert)
+
+    return () => {
+      socket.off('menu-update', handleMenuUpdate)
+      socket.off('menu-bulk-update', handleMenuUpdate)
+      socket.off('inventory-alert', handleInventoryAlert)
+    }
+  }, [socket])
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchMenu()
+  }, [fetchMenu])
+
+  // Helper functions
+  const getAvailableItems = useCallback(() => {
+    return menu.filter((item: MenuItem) => item.effective_availability)
+  }, [menu])
+
+  const getUnavailableItems = useCallback(() => {
+    return menu.filter((item: MenuItem) => !item.effective_availability)
+  }, [menu])
+
+  const getItemsByCategory = useCallback((category: string) => {
+    return menu.filter((item: MenuItem) => item.category === category)
+  }, [menu])
+
+  const getAvailableByCategory = useCallback((category: string) => {
+    return menu.filter((item: MenuItem) => item.category === category && item.effective_availability)
+  }, [menu])
+
+  const getAutoGeneratedEightySix = useCallback(() => {
+    return eightySixList.filter((item: EightySixItem) => item.is_auto_generated)
+  }, [eightySixList])
+
+  const getManualEightySix = useCallback(() => {
+    return eightySixList.filter((item: EightySixItem) => !item.is_auto_generated)
+  }, [eightySixList])
+
+  const isItemAvailable = useCallback((itemId: number) => {
+    const item = menu.find((m: MenuItem) => m.id === itemId)
+    return item?.effective_availability || false
+  }, [menu])
+
+  const getItemEightySixReason = useCallback((itemId: number) => {
+    const eightySixEntry = eightySixList.find((e: EightySixItem) => e.menu_item_id === itemId)
+    return eightySixEntry?.reason || null
+  }, [eightySixList])
+
+  const refreshMenu = useCallback(() => {
+    return fetchMenu()
+  }, [fetchMenu])
+
+  return {
+    // State
+    menu,
+    eightySixList,
+    loading,
+    lastUpdate,
+    recentChanges,
+
+    // Helper functions
+    getAvailableItems,
+    getUnavailableItems,
+    getItemsByCategory,
+    getAvailableByCategory,
+    getAutoGeneratedEightySix,
+    getManualEightySix,
+    isItemAvailable,
+    getItemEightySixReason,
+
+    // Actions
+    refreshMenu,
+
+    // Statistics
+    stats: {
+      totalItems: menu.length,
+      availableItems: getAvailableItems().length,
+      unavailableItems: getUnavailableItems().length,
+      autoEightySix: getAutoGeneratedEightySix().length,
+      manualEightySix: getManualEightySix().length,
+    }
+  }
+}
+
+// Hook for real-time inventory updates
+export const useRealTimeInventory = () => {
+  const [lowStockAlerts, setLowStockAlerts] = useState<InventoryAlert[]>([])
+  const [lastInventoryUpdate, setLastInventoryUpdate] = useState<string | null>(null)
+  const { socket } = useSocket()
+
+  useEffect(() => {
+    if (!socket) return
+
+    const handleInventoryAlert = (alertData: InventoryAlert) => {
+      console.log('📦 LOW STOCK ALERT:', alertData)
+      setLowStockAlerts((prev: InventoryAlert[]) => [alertData, ...prev.slice(0, 19)]) // Keep last 20 alerts
+      setLastInventoryUpdate(new Date().toISOString())
+    }
+
+    const handleMenuUpdate = (updateEvent: MenuUpdateEvent) => {
+      if (updateEvent.type === 'item-86ed') {
+        // Check if this was due to inventory shortage
+        const item = updateEvent.menu.find((m: MenuItem) => m.id === updateEvent.menuItemId)
+        if (item && item.eighty_six_reason?.includes('Insufficient inventory')) {
+          setLowStockAlerts((prev: InventoryAlert[]) => [{
+            type: 'auto-86',
+            menuItem: item,
+            reason: item.eighty_six_reason,
+            timestamp: updateEvent.timestamp
+          }, ...prev.slice(0, 19)])
+        }
+      }
+    }
+
+    socket.on('inventory-alert', handleInventoryAlert)
+    socket.on('menu-update', handleMenuUpdate)
+
+    return () => {
+      socket.off('inventory-alert', handleInventoryAlert)
+      socket.off('menu-update', handleMenuUpdate)
+    }
+  }, [socket])
+
+  const clearAlerts = useCallback(() => {
+    setLowStockAlerts([])
+  }, [])
+
+  return {
+    lowStockAlerts,
+    lastInventoryUpdate,
+    clearAlerts,
+    hasUnreadAlerts: lowStockAlerts.length > 0
+  }
+}

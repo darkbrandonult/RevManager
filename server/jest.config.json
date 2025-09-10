@@ -1,0 +1,25 @@
+{
+  "testEnvironment": "node",
+  "preset": "jest",
+  "transform": {},
+  "testMatch": [
+    "**/__tests__/**/*.test.(js|ts)",
+    "**/*.test.(js|ts)"
+  ],
+  "collectCoverageFrom": [
+    "**/*.{js,ts}",
+    "!**/node_modules/**",
+    "!**/database/setup.js",
+    "!server.js",
+    "!**/__tests__/**"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 50,
+      "functions": 50,
+      "lines": 50,
+      "statements": 50
+    }
+  },
+  "setupFilesAfterEnv": ["<rootDir>/setupTests.js"]
+}
