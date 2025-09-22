@@ -1,0 +1,58 @@
+name: revmanager-app
+region: nyc
+services:
+  - name: backend
+    type: web
+    repo: https://github.com/yourusername/revmanager.git
+    source_dir: /server
+    build_command: npm install
+    run_command: npm start
+    environment_slug: node-js
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    http_port: 3001
+    routes:
+      - path: /
+    envs:
+      - key: NODE_ENV
+        value: "production"
+      - key: JWT_SECRET
+        type: SECRET
+        value: "your-super-secure-jwt-secret-replace-this"
+      - key: SESSION_SECRET
+        type: SECRET
+        value: "your-session-secret-replace-this"
+      - key: CORS_ORIGIN
+        value: "https://revmanager-frontend.ondigitalocean.app"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "100"
+      - key: DATABASE_URL
+        value: "${revmanager-db.DATABASE_URL}"
+        type: SECRET
+        scope: RUN_AND_BUILD_TIME
+
+  - name: frontend
+    type: static_site
+    repo: https://github.com/yourusername/revmanager.git
+    source_dir: /client
+    build_command: npm run build
+    output_dir: /dist
+    environment_slug: node-js
+    envs:
+      - key: VITE_API_URL
+        value: "https://revmanager-backend.ondigitalocean.app"
+      - key: VITE_SOCKET_URL
+        value: "https://revmanager-backend.ondigitalocean.app"
+      - key: VITE_APP_NAME
+        value: "RevManager"
+      - key: VITE_APP_VERSION
+        value: "1.0.0"
+
+databases:
+  - name: revmanager-db
+    engine: PG
+    version: "14"
+    production: true
+    cluster_name: revmanager-cluster

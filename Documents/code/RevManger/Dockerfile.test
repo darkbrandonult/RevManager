@@ -1,0 +1,33 @@
+# Multi-stage Dockerfile for testing
+
+# Base stage with Node.js
+FROM node:18-alpine AS base
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# Dependencies stage
+FROM base AS deps
+COPY package*.json ./
+RUN npm ci --frozen-lockfile
+
+# Frontend test stage
+FROM base AS frontend-test
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Create coverage directory
+RUN mkdir -p coverage
+
+# Default command for frontend tests
+CMD ["npm", "test", "--", "--coverage", "--watchAll=false"]
+
+# Integration test stage (simplified without Playwright for now)
+FROM base AS integration-test
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Create test directories
+RUN mkdir -p tests/integration coverage
+
+# Default command for integration tests
+CMD ["npm", "run", "test:integration"]

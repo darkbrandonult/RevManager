@@ -1,0 +1,40 @@
+{
+  "name": "revmanger-server",
+  "version": "1.0.0",
+  "description": "Backend server for RevManager restaurant management PWA",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "NODE_ENV=production node server.js",
+    "build:prod": "echo 'Backend build complete'",
+    "setup-db": "node database/setup.js",
+    "setup-db:prod": "NODE_ENV=production node database/setup.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "docker:build": "docker build -t revmanager-backend .",
+    "migrate": "node database/migrate.js",
+    "seed": "node database/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.3",
+    "@babel/preset-env": "^7.28.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/supertest": "^6.0.3",
+    "babel-jest": "^30.1.2",
+    "jest": "^30.1.3",
+    "nodemon": "^3.0.1",
+    "supertest": "^7.1.4"
+  }
+}

@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: revmanager-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: revmanager_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./server/database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - revmanager-dev-network
+
+  # Redis for development
+  redis:
+    image: redis:7-alpine
+    container_name: revmanager-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - revmanager-dev-network
+
+  # Backend API Server (Development)
+  backend-dev:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: revmanager-backend-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/revmanager_dev
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-key
+      PORT: 3001
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "3002:3001"
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      - uploads_dev_data:/app/uploads
+    command: npm run dev
+    networks:
+      - revmanager-dev-network
+
+volumes:
+  postgres_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  uploads_dev_data:
+    driver: local
+
+networks:
+  revmanager-dev-network:
+    driver: bridge
