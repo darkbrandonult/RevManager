@@ -49,7 +49,7 @@ logs/
 *.db
 *.sqlite
 
-# GitHub Copilot instructions (keep private)
+# Development instructions
 .github/copilot-instructions.md
 *.sqlite3
 
