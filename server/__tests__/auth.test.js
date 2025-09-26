@@ -1,26 +1,25 @@
 import request from 'supertest'
 import express from 'express'
 import jwt from 'jsonwebtoken'
-import authRoutes from '../../routes/auth.js'
+import bcrypt from 'bcryptjs'
+import authRoutes from '../routes/auth.js'
 
 // Mock database connection
 const mockPool = {
   query: jest.fn()
 }
-jest.mock('../../database/connection.js', () => ({
+jest.mock('../database/connection.js', () => ({
   pool: mockPool
 }))
 
-// Mock bcrypt
-jest.mock('bcrypt', () => ({
-  compare: jest.fn(),
-  hash: jest.fn()
-}))
-
-// Mock jsonwebtoken
-jest.mock('jsonwebtoken', () => ({
-  sign: jest.fn(),
-  verify: jest.fn()
+// Mock middleware
+jest.mock('../middleware/auth.js', () => ({
+  requireAuth: (req, res, next) => {
+    req.user = { userId: 1, email: 'test@example.com', role: 'server' }
+    next()
+  },
+  requireUserManagement: (req, res, next) => next(),
+  auditLog: () => (req, res, next) => next()
 }))
 
 // Create test app

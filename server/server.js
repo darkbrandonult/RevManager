@@ -28,6 +28,8 @@ const __dirname = path.dirname(__filename)
 
 // Load environment-specific config
 const nodeEnv = process.env.NODE_ENV || 'development'
+dotenv.config({ path: `.env.${nodeEnv}` })
+dotenv.config() // Load default .env as fallback
 dotenv.config({ path: path.join(__dirname, `.env.${nodeEnv}`) })
 dotenv.config() // Load default .env as fallback
 

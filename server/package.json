@@ -28,7 +28,7 @@
     "socket.io": "^4.7.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.28.3",
+    "@babel/core": "^7.28.4",
     "@babel/preset-env": "^7.28.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/supertest": "^6.0.3",

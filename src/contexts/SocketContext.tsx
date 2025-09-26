@@ -1,29 +1,78 @@
-import { createContext, useContext, ReactNode } from 'react'
-import { Socket } from 'socket.io-client'
+import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
+import { io, Socket } from 'socket.io-client';
 
 interface SocketContextType {
-  socket: Socket | null
+  socket: Socket | null;
+  isConnected: boolean;
+  emit: (event: string, data?: any) => void;
 }
 
-const SocketContext = createContext<SocketContextType | undefined>(undefined)
-
-export const useSocket = () => {
-  const context = useContext(SocketContext)
-  if (context === undefined) {
-    throw new Error('useSocket must be used within a SocketProvider')
-  }
-  return context
-}
+const SocketContext = createContext<SocketContextType | undefined>(undefined);
 
 interface SocketProviderProps {
-  children: ReactNode
-  socket: Socket | null
+  children: ReactNode;
 }
 
-export const SocketProvider = ({ children, socket }: SocketProviderProps) => {
-  const value = {
+export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    // Initialize socket connection
+    const socketInstance = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:3001', {
+      transports: ['websocket'],
+      autoConnect: true
+    });
+
+    socketInstance.on('connect', () => {
+      console.log('Socket connected:', socketInstance.id);
+      setIsConnected(true);
+    });
+
+    socketInstance.on('disconnect', () => {
+      console.log('Socket disconnected');
+      setIsConnected(false);
+    });
+
+    socketInstance.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setIsConnected(false);
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, []);
+
+  const emit = (event: string, data?: any) => {
+    if (socket && isConnected) {
+      socket.emit(event, data);
+    } else {
+      console.warn('Socket not connected, cannot emit:', event);
+    }
+  };
+
+  const value: SocketContextType = useMemo(() => ({
     socket,
-  }
+    isConnected,
+    emit
+  }), [socket, isConnected, emit]);
 
-  return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>
-}
+  return (
+    <SocketContext.Provider value={value}>
+      {children}
+    </SocketContext.Provider>
+  );
+};
+
+export const useSocket = () => {
+  const context = useContext(SocketContext);
+  if (context === undefined) {
+    throw new Error('useSocket must be used within a SocketProvider');
+  }
+  return context;
+};
+
+export { SocketContext };

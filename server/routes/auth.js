@@ -27,9 +27,23 @@ router.post('/login', async (req, res) => {
 
     const user = userResult.rows[0]
 
-    // Check password (in production, this would be properly hashed)
-    // For now, accepting any password for demo purposes
-    const isValidPassword = true // await bcrypt.compare(password, user.password_hash)
+    // Check password - support demo accounts with simple passwords
+    let isValidPassword = false
+    
+    // Demo accounts for testing (use 'password' for all demo accounts)
+    const demoAccounts = [
+      'owner@restaurant.com',
+      'manager@restaurant.com', 
+      'chef@restaurant.com',
+      'server@restaurant.com',
+      'customer@restaurant.com'
+    ]
+    
+    if (demoAccounts.includes(email) && password === 'password') {
+      isValidPassword = true
+    } else if (user.password_hash) {
+      isValidPassword = await bcrypt.compare(password, user.password_hash)
+    }
 
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' })
@@ -49,19 +63,40 @@ router.post('/login', async (req, res) => {
     // Return user data (without password hash)
     const { password_hash, ...userWithoutPassword } = user
     
-    res.json({
-      token,
-      user: {
-        id: userWithoutPassword.id,
-        email: userWithoutPassword.email,
-        firstName: userWithoutPassword.first_name,
-        lastName: userWithoutPassword.last_name,
-        role: userWithoutPassword.role
-      }
+    // Update last login timestamp
+    await pool.query(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    )
+
+    res.json({ 
+      user: userWithoutPassword,
+      token 
     })
 
   } catch (error) {
     console.error('Login error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Token validation endpoint
+router.get('/validate', requireAuth, async (req, res) => {
+  try {
+    // Get fresh user data
+    const userResult = await pool.query(
+      'SELECT id, name, email, role, created_at, last_login FROM users WHERE id = $1 AND is_active = true',
+      [req.user.userId]
+    )
+
+    if (userResult.rows.length === 0) {
+      return res.status(401).json({ error: 'User not found or inactive' })
+    }
+
+    const user = userResult.rows[0]
+    res.json(user)
+  } catch (error) {
+    console.error('Token validation error:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
