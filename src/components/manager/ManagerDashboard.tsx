@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SocketContext } from '../../contexts/SocketContext';
-import { AuthContext } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface User {
   id: number;
@@ -46,8 +46,9 @@ export const ManagerDashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'staff' | 'reports'>('overview');
   const [isAddingMenuItem, setIsAddingMenuItem] = useState(false);
-  const { socket } = useContext(SocketContext);
-  const { user } = useContext(AuthContext);
+  const socketContext = useContext(SocketContext);
+  const socket = socketContext?.socket || null;
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchUsers();

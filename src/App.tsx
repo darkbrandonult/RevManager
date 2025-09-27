@@ -1,45 +1,38 @@
 import React from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { SocketProvider } from './contexts/SocketContext';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { LoginForm } from './components/auth/LoginForm';
-import { Navbar } from './components/common/Navbar';
-import { RoleBasedDashboard } from './components/common/RoleBasedDashboard';
+import UnifiedDashboard from './components/UnifiedDashboard';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading RevManager...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading RevManager...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <LoginForm />;
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      <main>
-        <RoleBasedDashboard />
-      </main>
-    </div>
-  );
+  // After login, show the unified dashboard with role-specific content
+  return <UnifiedDashboard />;
 };
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <SocketProvider>
+    <ErrorBoundary>
+      <AuthProvider>
         <AppContent />
-      </SocketProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

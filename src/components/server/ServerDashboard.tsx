@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { SocketContext } from '../../contexts/SocketContext';
-import { AuthContext } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Order {
   id: number;
@@ -38,8 +38,9 @@ export const ServerDashboard: React.FC = () => {
   const [eightySixList, setEightySixList] = useState<number[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [activeTab, setActiveTab] = useState<'orders' | 'menu'>('orders');
-  const { socket } = useContext(SocketContext);
-  const { user } = useContext(AuthContext);
+  const socketContext = useContext(SocketContext);
+  const socket = socketContext?.socket || null;
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchOrders();

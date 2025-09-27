@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { menuItems as allMenuItems, MenuItem } from '../data/menuData'
 
 const SimplePublicMenu = () => {
@@ -190,16 +189,14 @@ const SimplePublicMenu = () => {
         )
       })}
 
-      {/* Footer with link to admin */}
-      <div className="text-center mt-12 pt-8 border-t border-gray-200">
-        <p className="text-gray-500 mb-4">Restaurant Management</p>
-        <Link
-          to="/login"
-          className="inline-block bg-gray-800 text-white px-6 py-2 rounded-md hover:bg-gray-700 transition-colors"
-        >
-          Staff Login
-        </Link>
-      </div>
+            {/* Footer */}
+      <footer className="bg-gray-800 text-white py-12">
+        <div className="max-w-6xl mx-auto px-4 text-center">
+          <p className="text-gray-400">
+            Staff Dashboard available through main navigation
+          </p>
+        </div>
+      </footer>
     </div>
   )
 }

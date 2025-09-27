@@ -85,7 +85,7 @@ router.get('/validate', requireAuth, async (req, res) => {
   try {
     // Get fresh user data
     const userResult = await pool.query(
-      'SELECT id, name, email, role, created_at, last_login FROM users WHERE id = $1 AND is_active = true',
+      'SELECT id, first_name, last_name, email, role, created_at, last_login FROM users WHERE id = $1 AND is_active = true',
       [req.user.userId]
     )
 

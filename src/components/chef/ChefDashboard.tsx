@@ -46,7 +46,8 @@ export const ChefDashboard: React.FC = () => {
   const [eightySixList, setEightySixList] = useState<number[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [activeTab, setActiveTab] = useState<'kitchen' | 'menu' | 'inventory'>('kitchen');
-  const { socket } = useContext(SocketContext);
+  const socketContext = useContext(SocketContext);
+  const socket = socketContext?.socket || null;
 
   useEffect(() => {
     fetchOrders();

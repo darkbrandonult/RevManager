@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 
 interface OrderStats {
   totalOrders: number
@@ -16,7 +15,11 @@ interface MenuItemStatus {
   quantity?: number
 }
 
-const SimpleDashboard = () => {
+interface SimpleDashboardProps {
+  onNavigateToTab?: (tabId: string) => void;
+}
+
+const SimpleDashboard: React.FC<SimpleDashboardProps> = ({ onNavigateToTab }) => {
   const [orderStats, setOrderStats] = useState<OrderStats>({
     totalOrders: 0,
     pending: 0,
@@ -27,7 +30,6 @@ const SimpleDashboard = () => {
   const [menuItems, setMenuItems] = useState<MenuItemStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -89,12 +91,6 @@ const SimpleDashboard = () => {
     fetchDashboardData()
   }, [])
 
-  const handleLogout = () => {
-    // In real app, this would clear tokens/session
-    console.log('Logging out (demo mode)')
-    navigate('/')
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -108,34 +104,6 @@ const SimpleDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">🍽️ RevManager</h1>
-              <span className="ml-4 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                Staff Dashboard
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link 
-                to="/" 
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Public Menu
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
@@ -201,45 +169,45 @@ const SimpleDashboard = () => {
           <div className="bg-white p-6 rounded-lg shadow border">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">🍳 Kitchen Management</h3>
             <p className="text-gray-600 mb-4">View and manage active orders in the kitchen queue.</p>
-            <Link 
-              to="/kitchen"
+            <button 
+              onClick={() => onNavigateToTab?.('kitchen')}
               className="block w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-center"
             >
               Open Kitchen View
-            </Link>
+            </button>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow border">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 Menu Management</h3>
             <p className="text-gray-600 mb-4">Update menu items, prices, and availability.</p>
-            <Link 
-              to="/menu-management"
+            <button 
+              onClick={() => onNavigateToTab?.('menu-management')}
               className="block w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-center"
             >
               Manage Menu
-            </Link>
+            </button>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow border">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">👥 Staff & Payroll</h3>
             <p className="text-gray-600 mb-4">Manage staff roles, time tracking, and payroll.</p>
-            <Link 
-              to="/staff-payroll"
+            <button 
+              onClick={() => onNavigateToTab?.('staff')}
               className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-center"
             >
               Manage Staff
-            </Link>
+            </button>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow border">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">📊 Reports</h3>
             <p className="text-gray-600 mb-4">View sales reports and analytics.</p>
-            <Link 
-              to="/reports"
+            <button 
+              onClick={() => onNavigateToTab?.('reports')}
               className="block w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md font-medium transition-colors text-center"
             >
               View Reports
-            </Link>
+            </button>
           </div>
         </div>
 

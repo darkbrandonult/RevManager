@@ -1,5 +1,5 @@
-import React, { useState, useContext } from 'react';
-import { AuthContext } from '../../contexts/AuthContext';
+import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -11,7 +11,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { login } = useContext(AuthContext);
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

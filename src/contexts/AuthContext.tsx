@@ -1,10 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 
 interface User {
   id: number;
-  name: string;
   email: string;
+  first_name: string;
+  last_name: string;
   role: 'customer' | 'server' | 'chef' | 'manager' | 'owner';
+  is_active: boolean;
+  created_at: string;
+  last_login?: string;
 }
 
 interface AuthContextType {
@@ -37,7 +41,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const validateToken = async (token: string) => {
     try {
-      const response = await fetch('/api/auth/validate', {
+      const response = await fetch('http://localhost:3001/api/auth/validate', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -60,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('http://localhost:3001/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -86,13 +90,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null);
   };
 
-  const value: AuthContextType = {
+  const value: AuthContextType = useMemo(() => ({
     user,
     login,
     logout,
     isLoading,
     isAuthenticated: !!user
-  };
+  }), [user, login, logout, isLoading]);
 
   return (
     <AuthContext.Provider value={value}>
