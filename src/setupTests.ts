@@ -20,9 +20,9 @@ jest.mock('socket.io-client', () => {
   }
 })
 
-// Mock useSocket hook
-jest.mock('./hooks/useSocket', () => ({
-  useSocket: jest.fn(() => ({
+// Mock socket.io-client
+jest.mock('socket.io-client', () => {
+  return jest.fn(() => ({
     on: jest.fn(),
     off: jest.fn(),
     emit: jest.fn(),
@@ -31,7 +31,7 @@ jest.mock('./hooks/useSocket', () => ({
     connected: true,
     id: 'mock-socket-id'
   }))
-}))
+})
 
 // Mock fetch
 global.fetch = jest.fn()
