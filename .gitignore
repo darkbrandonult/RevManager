@@ -82,3 +82,6 @@ test-results.xml
 *.zip
 RevManger.zip
 Rev.zip
+
+# Test backup files
+*.backup
