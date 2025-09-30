@@ -30,7 +30,7 @@ router.post('/login', async (req, res) => {
     // Check password - support demo accounts with simple passwords
     let isValidPassword = false
     
-    // Demo accounts for testing (use 'password' for all demo accounts)
+    // Demo accounts for testing (use 'demo123' for all demo accounts)
     const demoAccounts = [
       'owner@restaurant.com',
       'manager@restaurant.com', 
@@ -39,7 +39,7 @@ router.post('/login', async (req, res) => {
       'customer@restaurant.com'
     ]
     
-    if (demoAccounts.includes(email) && password === 'password') {
+    if (demoAccounts.includes(email) && password === 'demo123') {
       isValidPassword = true
     } else if (user.password_hash) {
       isValidPassword = await bcrypt.compare(password, user.password_hash)

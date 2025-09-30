@@ -56,17 +56,32 @@ router.get('/', requireStaff, async (req, res) => {
     let query = `
       SELECT 
         o.id,
-        o.user_id,
+        o.customer_id,
+        o.customer_name,
+        o.table_number,
         o.status,
         o.total_amount,
-        o.items,
         o.notes,
         o.created_at,
         o.updated_at,
         u.first_name as customer_first_name,
-        u.last_name as customer_last_name
+        u.last_name as customer_last_name,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', oi.id,
+              'menu_item_id', oi.menu_item_id,
+              'menu_item_name', oi.menu_item_name,
+              'quantity', oi.quantity,
+              'price', oi.price,
+              'special_instructions', oi.special_instructions
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL), 
+          '[]'::json
+        ) as items
       FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.customer_id = u.id
+      LEFT JOIN order_items oi ON o.id = oi.order_id
     `
     
     const params = []
@@ -76,7 +91,7 @@ router.get('/', requireStaff, async (req, res) => {
       params.push(status)
     }
     
-    query += ' ORDER BY o.created_at DESC'
+    query += ' GROUP BY o.id, u.first_name, u.last_name ORDER BY o.created_at DESC'
     
     const result = await pool.query(query, params)
     res.json(result.rows)
@@ -186,10 +201,10 @@ router.post('/', requireAuth, auditLog('CREATE_ORDER'), async (req, res) => {
 
       // Create the order
       const orderResult = await client.query(`
-        INSERT INTO orders (customer_name, status, total_amount, created_by)
-        VALUES ($1, 'pending', $2, $3)
+        INSERT INTO orders (customer_name, status, total_amount)
+        VALUES ($1, 'pending', $2)
         RETURNING *
-      `, [customer_name.trim(), total_amount, userId])
+      `, [customer_name.trim(), total_amount])
 
       const newOrder = orderResult.rows[0]
 
@@ -202,11 +217,22 @@ router.post('/', requireAuth, auditLog('CREATE_ORDER'), async (req, res) => {
           throw new Error('Invalid item data')
         }
 
+        // Get menu item name
+        const menuItemResult = await client.query(`
+          SELECT name FROM menu_items WHERE id = $1
+        `, [menu_item_id])
+
+        if (menuItemResult.rows.length === 0) {
+          throw new Error(`Menu item with id ${menu_item_id} not found`)
+        }
+
+        const menuItemName = menuItemResult.rows[0].name
+
         const itemResult = await client.query(`
-          INSERT INTO order_items (order_id, menu_item_id, quantity, price, notes)
-          VALUES ($1, $2, $3, $4, $5)
+          INSERT INTO order_items (order_id, menu_item_id, menu_item_name, quantity, price, special_instructions)
+          VALUES ($1, $2, $3, $4, $5, $6)
           RETURNING *
-        `, [newOrder.id, menu_item_id, quantity, price, itemNotes])
+        `, [newOrder.id, menu_item_id, menuItemName, quantity, price, itemNotes])
 
         orderItems.push(itemResult.rows[0])
       }
@@ -222,8 +248,6 @@ router.post('/', requireAuth, auditLog('CREATE_ORDER'), async (req, res) => {
           o.total_amount,
           o.created_at,
           o.updated_at,
-          o.created_by,
-          u.first_name as created_by_name,
           COALESCE(
             JSON_AGG(
               JSON_BUILD_OBJECT(
@@ -232,17 +256,16 @@ router.post('/', requireAuth, auditLog('CREATE_ORDER'), async (req, res) => {
                 'menu_item_name', mi.name,
                 'quantity', oi.quantity,
                 'price', oi.price,
-                'notes', oi.notes
+                'notes', oi.special_instructions
               ) ORDER BY oi.id
             ) FILTER (WHERE oi.id IS NOT NULL),
             '[]'::json
           ) as items
         FROM orders o
-        LEFT JOIN users u ON o.created_by = u.id
         LEFT JOIN order_items oi ON o.id = oi.order_id
         LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
         WHERE o.id = $1
-        GROUP BY o.id, u.first_name
+        GROUP BY o.id
       `, [newOrder.id])
 
       const completeOrder = completeOrderResult.rows[0]
@@ -386,19 +409,35 @@ router.get('/:orderId', requireAuth, async (req, res) => {
     const result = await pool.query(`
       SELECT 
         o.id,
-        o.user_id,
+        o.customer_id,
+        o.customer_name,
+        o.table_number,
         o.status,
         o.total_amount,
-        o.items,
         o.notes,
         o.created_at,
         o.updated_at,
         u.first_name as customer_first_name,
         u.last_name as customer_last_name,
-        u.email as customer_email
+        u.email as customer_email,
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', oi.id,
+              'menu_item_id', oi.menu_item_id,
+              'menu_item_name', oi.menu_item_name,
+              'quantity', oi.quantity,
+              'price', oi.price,
+              'special_instructions', oi.special_instructions
+            )
+          ) FILTER (WHERE oi.id IS NOT NULL), 
+          '[]'::json
+        ) as items
       FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
+      LEFT JOIN users u ON o.customer_id = u.id
+      LEFT JOIN order_items oi ON o.id = oi.order_id
       WHERE o.id = $1
+      GROUP BY o.id, u.first_name, u.last_name, u.email
     `, [orderId])
 
     if (result.rows.length === 0) {

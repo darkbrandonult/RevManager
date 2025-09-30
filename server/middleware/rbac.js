@@ -22,8 +22,8 @@ export const requirePermission = (permission) => {
         const rolePermissions = {
             owner: ['all'],
             manager: ['view_dashboard', 'manage_menu', 'manage_orders', 'manage_inventory', 'manage_staff', 'view_reports'],
-            chef: ['view_dashboard', 'manage_orders', 'manage_inventory', 'view_menu'],
-            server: ['view_dashboard', 'manage_orders', 'view_menu', 'view_inventory'],
+            chef: ['manage_orders', 'manage_inventory', 'view_menu'],
+            server: ['place_orders', 'view_orders', 'view_menu'],
             customer: ['view_menu', 'place_orders']
         };
 

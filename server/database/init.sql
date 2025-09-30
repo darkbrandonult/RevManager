@@ -150,6 +150,18 @@ INSERT INTO inventory_items (name, description, category, current_stock, par_lev
 ('Chocolate', 'Dark chocolate for desserts', 'Baking', 10, 5, 'lbs')
 ON CONFLICT DO NOTHING;
 
+-- Eight-six list table (for tracking unavailable menu items)
+CREATE TABLE IF NOT EXISTS eight_six_list (
+  id SERIAL PRIMARY KEY,
+  menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  removed_at TIMESTAMP NULL,
+  removed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  is_auto_generated BOOLEAN DEFAULT false
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
@@ -160,6 +172,8 @@ CREATE INDEX IF NOT EXISTS idx_reservations_date_time ON reservations(reservatio
 CREATE INDEX IF NOT EXISTS idx_staff_shifts_user_date ON staff_shifts(user_id, shift_date);
 CREATE INDEX IF NOT EXISTS idx_tips_user_date ON tips(user_id, tip_date);
 CREATE INDEX IF NOT EXISTS idx_inventory_transactions_item_id ON inventory_transactions(inventory_item_id);
+CREATE INDEX IF NOT EXISTS idx_eight_six_list_menu_item ON eight_six_list(menu_item_id);
+CREATE INDEX IF NOT EXISTS idx_eight_six_list_created_at ON eight_six_list(created_at);
 
 -- Grant permissions (adjust as needed for your environment)
 -- GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;

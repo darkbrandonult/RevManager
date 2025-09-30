@@ -13,6 +13,40 @@ import {
 
 const router = express.Router()
 
+// Reset menu to original items (development only)
+router.post('/reset', requireMenuManagement, auditLog('RESET_MENU'), async (req, res) => {
+  const client = await pool.connect()
+  
+  try {
+    await client.query('BEGIN')
+    
+    // Delete in correct order to avoid foreign key constraints
+    await client.query('DELETE FROM order_items')
+    await client.query('DELETE FROM orders')  
+    await client.query('DELETE FROM eighty_six_list')
+    await client.query('DELETE FROM menu_items')
+    
+    // Reset sequences
+    await client.query('ALTER SEQUENCE menu_items_id_seq RESTART WITH 1')
+    await client.query('ALTER SEQUENCE orders_id_seq RESTART WITH 1')
+    await client.query('ALTER SEQUENCE order_items_id_seq RESTART WITH 1')
+    
+    await client.query('COMMIT')
+    
+    res.json({ 
+      message: 'Menu reset successfully. Frontend will now use original 40 items from menuData.ts',
+      items_removed: 'All database items, orders, and 86 list cleared',
+      note: 'Database is now empty - system will fall back to the 40 items in menuData.ts'
+    })
+  } catch (error) {
+    await client.query('ROLLBACK')
+    console.error('Error resetting menu:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  } finally {
+    client.release()
+  }
+})
+
 // Get all menu items (public endpoint)
 router.get('/', async (req, res) => {
   try {
@@ -122,6 +156,41 @@ router.post('/86/:itemId', requireMenuManagement, auditLog('ADD_TO_86_LIST'), as
 
   } catch (error) {
     console.error('Error adding item to 86 list:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Create new menu item (manager or owner only)
+router.post('/', requireMenuManagement, auditLog('CREATE_MENU_ITEM'), async (req, res) => {
+  try {
+    const { name, description, price, category, is_available = true } = req.body
+
+    if (!name || !description || !price || !category) {
+      return res.status(400).json({ error: 'Name, description, price, and category are required' })
+    }
+
+    const result = await pool.query(`
+      INSERT INTO menu_items (name, description, price, category, is_available)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [name, description, price, category, is_available])
+
+    res.status(201).json(result.rows[0])
+
+    // Emit real-time update
+    const io = req.app.get('io')
+    if (io) {
+      const updatedMenu = await getFullMenuWithAvailability()
+      io.emit('menu-update', {
+        type: 'item-created',
+        menuItem: result.rows[0],
+        menu: updatedMenu,
+        timestamp: new Date().toISOString()
+      })
+    }
+
+  } catch (error) {
+    console.error('Error creating menu item:', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 })
