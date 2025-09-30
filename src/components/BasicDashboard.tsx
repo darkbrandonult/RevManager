@@ -5,6 +5,8 @@ import SimpleMenuManagement from './SimpleMenuManagement';
 import SimpleReports from './SimpleReports';
 import SimplePublicMenu from './SimplePublicMenu';
 import StaffPayroll from './StaffPayroll';
+import SimpleOrderTaking from './SimpleOrderTaking';
+import RoleDebugger from './RoleDebugger';
 
 interface BasicDashboardProps {
   userRole: string;
@@ -12,32 +14,51 @@ interface BasicDashboardProps {
 }
 
 const BasicDashboard: React.FC<BasicDashboardProps> = ({ userRole, userName }) => {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // Set default tab based on role
+  const getDefaultTab = () => {
+    switch (userRole) {
+      case 'server':
+        return 'orders';
+      case 'chef':
+        return 'kitchen';
+      case 'customer':
+        return 'public-menu';
+      default:
+        return 'dashboard';
+    }
+  };
+  
+  const [activeTab, setActiveTab] = useState<string>(getDefaultTab());
 
   // Debug: Log the user role
   console.log('BasicDashboard - User Role:', userRole, 'User Name:', userName);
 
   // Define tabs based on role
   const getAvailableTabs = () => {
-    const baseTabs = [
-      { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
-      { id: 'public-menu', label: '🍽️ Public Menu', icon: '🍽️' }
-    ];
-
     const roleTabs = {
+      'owner': [
+        { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
+        { id: 'kitchen', label: '� Kitchen Management', icon: '�' },
+        { id: 'menu-management', label: '📋 Menu Management', icon: '📋' },
+        { id: 'staff', label: '👥 Staff & Payroll', icon: '👥' },
+        { id: 'reports', label: '📈 Reports & Analytics', icon: '📈' },
+        { id: 'public-menu', label: '🍽️ Public Menu', icon: '🍽️' }
+      ],
       'manager': [
-        ...baseTabs,
+        { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
         { id: 'kitchen', label: '🍳 Kitchen Management', icon: '🍳' },
         { id: 'menu-management', label: '📋 Menu Management', icon: '📋' },
         { id: 'staff', label: '👥 Staff & Payroll', icon: '👥' },
-        { id: 'reports', label: '📈 Reports & Analytics', icon: '📈' }
+        { id: 'reports', label: '📈 Reports & Analytics', icon: '📈' },
+        { id: 'public-menu', label: '🍽️ Public Menu', icon: '🍽️' }
       ],
       'admin': [  // Add admin role in case that's what's in the DB
-        ...baseTabs,
+        { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
         { id: 'kitchen', label: '🍳 Kitchen Management', icon: '🍳' },
         { id: 'menu-management', label: '📋 Menu Management', icon: '📋' },
         { id: 'staff', label: '👥 Staff & Payroll', icon: '👥' },
-        { id: 'reports', label: '📈 Reports & Analytics', icon: '📈' }
+        { id: 'reports', label: '📈 Reports & Analytics', icon: '📈' },
+        { id: 'public-menu', label: '🍽️ Public Menu', icon: '🍽️' }
       ],
       'chef': [
         { id: 'kitchen', label: '🍳 Kitchen Management', icon: '🍳' },
@@ -45,15 +66,18 @@ const BasicDashboard: React.FC<BasicDashboardProps> = ({ userRole, userName }) =
         { id: 'public-menu', label: '🍽️ Public Menu', icon: '🍽️' }
       ],
       'server': [
-        ...baseTabs,
-        { id: 'kitchen', label: '🍳 Kitchen Queue', icon: '🍳' }
+        { id: 'orders', label: '📝 Take Orders', icon: '📝' },
+        { id: 'kitchen', label: '🍳 Kitchen Queue', icon: '🍳' },
+        { id: 'public-menu', label: '🍽️ Menu', icon: '🍽️' }
       ],
       'customer': [
         { id: 'public-menu', label: '🍽️ Menu', icon: '🍽️' }
       ]
     };
 
-    const availableTabs = roleTabs[userRole as keyof typeof roleTabs] || baseTabs;
+    const availableTabs = roleTabs[userRole as keyof typeof roleTabs] || [
+      { id: 'public-menu', label: '🍽️ Public Menu', icon: '🍽️' }
+    ];
     console.log('Available tabs for role', userRole, ':', availableTabs);
     return availableTabs;
   };
@@ -72,13 +96,28 @@ const BasicDashboard: React.FC<BasicDashboardProps> = ({ userRole, userName }) =
         return <SimpleReports />;
       case 'public-menu':
         return <SimplePublicMenu />;
+      case 'orders':
+        return <SimpleOrderTaking />;
       default:
+        // Default based on role
+        if (userRole === 'server') {
+          return <SimpleOrderTaking />;
+        } else if (userRole === 'chef') {
+          return <SimpleKitchen />;
+        } else if (userRole === 'customer') {
+          return <SimplePublicMenu />;
+        }
         return <SimpleDashboard onNavigateToTab={setActiveTab} />;
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Role Debug Info */}
+      <div className="p-4">
+        <RoleDebugger />
+      </div>
+      
       {/* Tab Navigation Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

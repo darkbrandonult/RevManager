@@ -1,4 +1,14 @@
 import { useState, useEffect } from 'react'
+import { io, Socket } from 'socket.io-client'
+
+interface OrderItem {
+  id: number
+  menu_item_id: number
+  menu_item_name: string
+  quantity: number
+  price: number
+  notes?: string
+}
 
 interface Order {
   id: number
@@ -9,6 +19,10 @@ interface Order {
   customer?: string
   special_instructions?: string
   priority: 'normal' | 'high' | 'urgent'
+  customer_name?: string
+  total_amount?: string
+  created_at?: string
+  order_items?: OrderItem[]
 }
 
 interface InventoryItem {
@@ -41,6 +55,7 @@ const SimpleKitchen = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState<'orders' | 'inventory' | 'notes'>('orders')
+  const [socket, setSocket] = useState<Socket | null>(null)
   
   // Modal states
   const [showInventoryModal, setShowInventoryModal] = useState(false)
@@ -64,56 +79,135 @@ const SimpleKitchen = () => {
     type: 'info' as KitchenNote['type']
   })
 
+  // Helper function to format API order data for kitchen display
+  const formatOrderForKitchen = (apiOrder: any): Order => {
+    const items = apiOrder.items?.map((item: OrderItem) => 
+      `${item.menu_item_name} (x${item.quantity})`
+    ) || []
+    
+    const formatTime = (dateString: string) => {
+      const date = new Date(dateString)
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    }
+    
+    return {
+      id: apiOrder.id,
+      table: apiOrder.customer_name || `Table ${apiOrder.id}`,
+      items,
+      status: apiOrder.status || 'pending',
+      time: apiOrder.created_at ? formatTime(apiOrder.created_at) : new Date().toLocaleTimeString(),
+      customer: apiOrder.customer_name,
+      special_instructions: apiOrder.special_instructions,
+      priority: 'normal', // Default priority, could be enhanced based on business logic
+      customer_name: apiOrder.customer_name,
+      total_amount: apiOrder.total_amount,
+      created_at: apiOrder.created_at,
+      order_items: apiOrder.items
+    }
+  }
+
   useEffect(() => {
     fetchData()
+    
+    // Initialize Socket.io connection
+    const socketConnection = io()
+    setSocket(socketConnection)
+    
+    // Listen for real-time order updates
+    socketConnection.on('new-order', (order) => {
+      console.log('New order received:', order)
+      setOrders(prevOrders => [...prevOrders, formatOrderForKitchen(order)])
+    })
+    
+    socketConnection.on('order-status-update', (updateData) => {
+      console.log('Order status update:', updateData)
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === updateData.orderId 
+            ? { ...order, status: updateData.status as Order['status'] }
+            : order
+        )
+      )
+    })
+    
+    socketConnection.on('order-cancelled', (data) => {
+      console.log('Order cancelled:', data)
+      setOrders(prevOrders => 
+        prevOrders.filter(order => order.id !== data.orderId)
+      )
+    })
+    
+    // Join kitchen role for targeted updates
+    socketConnection.emit('join-role', 'kitchen')
+    
+    return () => {
+      socketConnection.disconnect()
+    }
   }, [])
 
   const fetchData = async () => {
     try {
       setLoading(true)
       
-      // Demo data - in real app, fetch from API
-      setOrders([
-        {
-          id: 1,
-          table: 'Table 5',
-          items: ['Grilled Salmon', 'Caesar Salad', 'Garlic Bread'],
-          status: 'preparing',
-          time: '12:30 PM',
-          customer: 'John Smith',
-          special_instructions: 'No onions on salad',
-          priority: 'normal'
-        },
-        {
-          id: 2,
-          table: 'Table 12',
-          items: ['Ribeye Steak - Medium Rare', 'Mashed Potatoes', 'Asparagus'],
-          status: 'pending',
-          time: '12:45 PM',
-          customer: 'Sarah Johnson',
-          priority: 'high'
-        },
-        {
-          id: 3,
-          table: 'Take-out #105',
-          items: ['Chicken Alfredo', 'Side Salad', 'Breadsticks'],
-          status: 'ready',
-          time: '1:00 PM',
-          customer: 'Mike Wilson',
-          priority: 'urgent'
-        },
-        {
-          id: 4,
-          table: 'Table 8',
-          items: ['Fish Tacos (2)', 'Chips & Guac', 'Lime Rice'],
-          status: 'pending',
-          time: '1:15 PM',
-          customer: 'Lisa Brown',
-          special_instructions: 'Extra spicy',
-          priority: 'normal'
+      // Fetch real orders from API
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/orders', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      ])
+      })
+      
+      if (response.ok) {
+        const apiOrders = await response.json()
+        console.log('Fetched orders:', apiOrders)
+        
+        // Convert API orders to kitchen format
+        const formattedOrders = apiOrders.map((order: any) => formatOrderForKitchen(order))
+        
+        // Add sample orders for demonstration
+        const sampleOrders = [
+          {
+            id: 1001,
+            table: 'Table 12',
+            items: ['Ribeye Steak - Medium Rare', 'Mashed Potatoes', 'Asparagus'],
+            status: 'pending' as const,
+            time: '12:45 PM',
+            customer: 'Sarah Johnson',
+            priority: 'high' as const
+          },
+          {
+            id: 1002,
+            table: 'Take-out #105',
+            items: ['Chicken Alfredo', 'Side Salad', 'Breadsticks'],
+            status: 'ready' as const,
+            time: '1:00 PM',
+            customer: 'Mike Wilson',
+            priority: 'urgent' as const
+          },
+          {
+            id: 1003,
+            table: 'Table 8',
+            items: ['Fish Tacos (2)', 'Chips & Guac', 'Lime Rice'],
+            status: 'preparing' as const,
+            time: '1:15 PM',
+            customer: 'Lisa Brown',
+            special_instructions: 'Extra spicy',
+            priority: 'normal' as const
+          }
+        ]
+        
+        setOrders([...formattedOrders, ...sampleOrders])
+      } else {
+        console.error('Failed to fetch orders:', response.status)
+        setError('Failed to load orders')
+      }
 
+      // Demo inventory data (can be replaced with API call later)
       setInventory([
         {
           id: 1,
@@ -195,6 +289,7 @@ const SimpleKitchen = () => {
         }
       ])
 
+      // Demo notes data (can be replaced with API call later)
       setNotes([
         {
           id: 1,
@@ -231,6 +326,7 @@ const SimpleKitchen = () => {
       ])
 
     } catch (err) {
+      console.error('Error fetching data:', err)
       setError('Failed to load kitchen data')
     } finally {
       setLoading(false)

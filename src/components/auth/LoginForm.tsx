@@ -92,7 +92,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
 
           <div className="text-center">
             <div className="text-xs text-gray-500 space-y-1">
-              <p>Demo Accounts:</p>
+              <p>Demo Accounts (password: <strong>demo123</strong>):</p>
               <p>owner@restaurant.com • manager@restaurant.com</p>
               <p>chef@restaurant.com • server@restaurant.com</p>
             </div>

@@ -143,9 +143,9 @@ const SimpleLogin = () => {
               <div className="text-sm text-blue-700">
                 <p className="font-medium mb-2">Demo Credentials:</p>
                 <ul className="space-y-1 text-xs">
-                  <li>• Email: any valid email format</li>
-                  <li>• Password: any non-empty password</li>
-                  <li>• This is a demo - real authentication will be added later</li>
+                  <li>• Email: owner@restaurant.com, manager@restaurant.com, chef@restaurant.com, server@restaurant.com</li>
+                  <li>• Password: <strong>demo123</strong></li>
+                  <li>• Different roles give access to different features</li>
                 </ul>
               </div>
             </div>
